@@ -12,14 +12,26 @@ def response_hook(resp, *args, **kwargs):
 hooks = { 'response' : response_hook }
 with FuturesSession(max_workers=1000) as session:
     futures = []
-    for i in range(100):
-        url = 'https://www.yahoo.com'
-        futures.append(session.get(url, hooks=hooks))
+    with open('url.txt') as url_file:
+        for url in url_file:
+            futures.append(session.get(url[:-1]))
 
     done = 0
-    with open('output.txt', 'w') as f:
-        for future in as_completed(futures):
-            resp = future.result()
-            f.write(resp.url + '\n')
-            done += 1
-            print(done)
+    success = 0
+    failure = 0
+    with open('success.txt', 'a') as success_file:
+        with open('failure.txt', 'a') as failure_file:
+            with open('done.txt', 'a') as done_file:
+                for future in as_completed(futures):
+                    resp = future.result()
+                    done_file.write("{}\n".format(resp.url))
+
+                    if resp.status_code == 200:
+                        success_file.write('{"url": ' +resp.url+ ', "text": ' +resp.text+ '}\n')
+                        success += 1
+                    else:
+                        failure_file.write("{}\n".format(resp.url))
+                        failure += 1
+
+                    done += 1
+                    print("Done: {}/{}, Success: {}, Failure: {}".format(done, len(futures), success, failure))
